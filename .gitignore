@@ -1,25 +1,25 @@
-# Global
-.env
-.vscode/
-*.log
+# Node.js dependencies
+MyRemoteDeskDesktopApp/node_modules/
+MyRemoteDeskVideoApp/node_modules/
 
-# Node.js (for both Electron and Video app)
-**/node_modules/
-**/package-lock.json
-
-# Electron.js (Desktop App)
-MyRemoteDeskDesktopApp/dist/
-MyRemoteDeskDesktopApp/build/
-
-# Django (Web App)
-**/__pycache__/
-**/*.py[cod]
-**/db.sqlite3
-**/*.sqlite3
-**/migrations/__pycache__/
+# Node.js lock files (optional to ignore)
+MyRemoteDeskDesktopApp/package-lock.json
+MyRemoteDeskVideoApp/package-lock.json
 
 # Python virtual environment
 venv/
+
+# Django __pycache__, migrations, DB
+MyRemoteDeskWebApp/**/__pycache__/
+MyRemoteDeskWebApp/**/migrations/
+MyRemoteDeskWebApp/**/*.py[cod]
+MyRemoteDeskWebApp/**/db.sqlite3
+*.sqlite3
+
+# General
+.env
+.vscode/
+*.log
 
 # OS-specific
 .DS_Store
