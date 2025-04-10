@@ -1,154 +1,255 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <title>MyRemoteDesk: Multi-User Video Call</title>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyRemoteDesk: Video Conferencing</title>
+    
+    <!-- External CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <!-- Scripts -->
+    <script src='/socket.io/socket.io.js'></script>
+    <script type="module" src='assets/js/rtc.js'></script>
+    <script type="module" src='assets/js/events.js'></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/webrtc-adapter/7.3.0/adapter.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.24.0/moment.min.js"></script>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.8/FileSaver.min.js'></script>
+    <script src='https://cdn.rawgit.com/yahoo/xss-filters/master/dist/xss-filters.js'></script>
+    <script src='assets/js/autolink.js'></script>
+    
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f3f4f6;
+        }
+        
+        .mirror-mode {
+            transform: scaleX(-1);
+        }
+        
+        .video-container {
+            background-color: #111827;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .video-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0,0,0,0.7));
+            padding: 12px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .video-container:hover .video-controls {
+            opacity: 1;
+        }
+        
+        .btn-control {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-control:hover {
+            background-color: rgba(255,255,255,0.1);
+        }
+        
+        .chat-message {
+            border-radius: 16px;
+            padding: 10px 16px;
+            margin-bottom: 10px;
+            max-width: 80%;
+        }
+        
+        .local-chat {
+            background-color: #4f46e5;
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .remote-chat {
+            background-color: #e5e7eb;
+            color: #1f2937;
+            margin-right: auto;
+            border-bottom-left-radius: 4px;
+        }
+        
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+        }
+        
+        .grid-auto-fill {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 16px;
+        }
+    </style>
+</head>
 
-        <meta content="width=device-width, initial-scale=1" name="viewport" />
-
-        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
-        <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
-        <link rel='stylesheet' href='assets/css/app.css' type="text/css">
-
-        <script src='/socket.io/socket.io.js'></script>
-        <script type="module" src='assets/js/rtc.js'></script>
-        <script type="module" src='assets/js/events.js'></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/webrtc-adapter/7.3.0/adapter.min.js" integrity="sha256-2qQheewaqnZlXJ3RJRghVUwD/3fD9HNqxh4C+zvgmF4=" crossorigin="anonymous"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.24.0/moment.min.js"></script>
-        <script src='https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.8/FileSaver.min.js'></script>
-        <script src='https://cdn.rawgit.com/yahoo/xss-filters/master/dist/xss-filters.js'></script>
-        <script src='assets/js/autolink.js'></script>
-    </head>
-
-    <body>
-        <div class="custom-modal" id='recording-options-modal'>
-            <div class="custom-modal-content">
-                <div class="row text-center">
-                    <div class="col-md-6 mb-2">
-                        <span class="record-option" id='record-video'>Record video</span>
-                    </div>
-                    <div class="col-md-6 mb-2">
-                        <span class="record-option" id='record-screen'>Record screen</span>
-                    </div>
-                </div>
-
-                <div class="row mt-3">
-                    <div class="col-md-12 text-center">
-                        <button class="btn btn-outline-danger" id='closeModal'>Close</button>
-                    </div>
+<body class="h-screen flex flex-col">
+    <!-- Recording Options Modal -->
+    <div id="recording-options-modal" class="modal-overlay hidden">
+        <div class="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
+            <h3 class="text-xl font-bold mb-4 text-center">Recording Options</h3>
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <button id="record-video" class="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
+                    <i class="fas fa-video text-2xl mb-2 text-indigo-600"></i>
+                    <p>Record Video</p>
+                </button>
+                <button id="record-screen" class="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
+                    <i class="fas fa-desktop text-2xl mb-2 text-indigo-600"></i>
+                    <p>Record Screen</p>
+                </button>
+            </div>
+            <div class="flex justify-center">
+                <button id="closeModal" class="px-4 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 transition">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Navigation Bar -->
+    <nav class="bg-indigo-900 text-white shadow-md z-10">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center">
+                <i class="fas fa-video-camera text-2xl mr-3"></i>
+                <h1 class="text-xl font-bold">MyRemoteDesk</h1>
+            </div>
+            
+            <!-- Meeting Controls -->
+            <div class="room-comm hidden flex space-x-1">
+                <span id="randomNumber" class="hidden"></span>
+                
+                <button id="toggle-video" class="btn-control text-white" title="Toggle Video">
+                    <i class="fas fa-video"></i>
+                </button>
+                
+                <button id="toggle-mute" class="btn-control text-white" title="Toggle Mute">
+                    <i class="fas fa-microphone"></i>
+                </button>
+                
+                <button id="share-screen" class="btn-control text-white" title="Share Screen">
+                    <i class="fas fa-desktop"></i>
+                </button>
+                
+                <button id="record" class="btn-control text-white" title="Record">
+                    <i class="fas fa-record-vinyl"></i>
+                </button>
+                
+                <button id="toggle-chat-pane" class="btn-control text-white relative" title="Toggle Chat">
+                    <i class="fas fa-comment"></i>
+                    <span id="new-chat-notification" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">!</span>
+                </button>
+                
+                <a href="/" class="btn-control bg-red-500 hover:bg-red-600 text-white flex items-center justify-center" title="Leave Meeting">
+                    <i class="fas fa-phone-slash"></i>
+                </a>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Create Room Container -->
+    <div id="room-create" class="hidden flex-grow flex items-center justify-center">
+        <div class="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
+            <h2 class="text-2xl font-bold text-center mb-6">Create a Meeting Room</h2>
+            
+            <div id="err-msg" class="text-red-500 text-center mb-4 text-sm"></div>
+            
+            <div class="mb-4">
+                <label for="room-name" class="block text-sm font-medium text-gray-700 mb-1">Room Name</label>
+                <input type="text" id="room-name" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Enter room name">
+            </div>
+            
+            <div class="mb-6">
+                <label for="your-name" class="block text-sm font-medium text-gray-700 mb-1">Your Name</label>
+                <input type="text" id="your-name" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Enter your name">
+            </div>
+            
+            <button id="create-room" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition">
+                Create Room
+            </button>
+            
+            <div id="room-created" class="mt-4 text-center"></div>
+        </div>
+    </div>
+    
+    <!-- Username Set Container -->
+    <div id="username-set" class="hidden flex-grow flex items-center justify-center">
+        <div class="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
+            <h2 class="text-2xl font-bold text-center mb-6">Join Meeting</h2>
+            
+            <div id="err-msg-username" class="text-red-500 text-center mb-4 text-sm"></div>
+            
+            <div class="mb-6">
+                <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Your Name</label>
+                <input type="text" id="username" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Enter your name">
+            </div>
+            
+            <button id="enter-room" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition">
+                Join Meeting
+            </button>
+        </div>
+    </div>
+    
+    <!-- Main Meeting Room Container -->
+    <div class="room-comm hidden flex-grow flex overflow-hidden">
+        <!-- Main Video Area -->
+        <div id="main-section" class="flex-grow p-4 overflow-y-auto">
+            <!-- Local Video Preview -->
+            <div class="mb-4 video-container w-48 h-36 absolute top-16 right-4 z-10">
+                <video id="local" class="local-video mirror-mode w-full h-full object-cover" autoplay muted></video>
+                <div class="absolute bottom-2 left-2 text-xs text-white bg-black bg-opacity-50 px-2 py-1 rounded">
+                    You
                 </div>
             </div>
+            
+            <!-- Remote Videos Grid -->
+            <div id="videos" class="grid-auto-fill h-full"></div>
         </div>
         
-        <nav style="background-color: #0a022f;" class="navbar fixed-top rounded-0 d-print-none">
-            <div class="text-white">MyRemoteDesk Meeting Video App</div>
-
-            <div class="pull-right room-comm" hidden>
-                <span class="text-white mr-5" style="visibility:hidden">
-                    Unique Identifier: <span id='randomNumber'></span>
-                </span>
-
-                <button class="btn btn-sm rounded-0 btn-no-effect" id='toggle-video' title="Hide Video">
-                    <i class="fa fa-video text-white"></i>
-                </button>
-
-                <button class="btn btn-sm rounded-0 btn-no-effect" id='toggle-mute' title="Mute">
-                    <i class="fa fa-microphone-alt text-white"></i>
-                </button>
-
-                <button class="btn btn-sm rounded-0 btn-no-effect" id='share-screen' title="Share screen">
-                    <i class="fa fa-desktop text-white"></i>
-                </button>
-
-                <button class="btn btn-sm rounded-0 btn-no-effect" id='record' title="Record">
-                    <i class="fa fa-dot-circle text-white"></i>
-                </button>
-
-                <button class="btn btn-sm text-white pull-right btn-no-effect" id='toggle-chat-pane'>
-                    <i class="fa fa-comment"></i> <span class="badge badge-danger very-small font-weight-lighter" id='new-chat-notification' hidden>New</span>
-                </button>
-
-                <button class="btn btn-sm rounded-0 btn-no-effect text-white">
-                    <a href="/" class="text-white text-decoration-none"><i class="fa fa-sign-out-alt text-white" title="Leave"></i></a>
-                </button>
-            </div>
-        </nav>
-
-        <div class="container-fluid" id='room-create' hidden>
-            <div class="row">
-                <div class="col-12 h2 mt-5 text-center">Create Room</div>
+        <!-- Chat Panel -->
+        <div id="chat-pane" class="hidden w-80 bg-white border-l border-gray-200 flex flex-col">
+            <div class="p-4 border-b border-gray-200">
+                <h2 class="text-lg font-semibold">Chat</h2>
             </div>
             
-            <div class="row mt-2">
-                <div class="col-12 text-center">
-                    <span class="form-text small text-danger" id='err-msg'></span>
-                </div>
-
-                <div class="col-12 col-md-4 offset-md-4 mb-3">
-                    <label for="room-name">Room Name</label>
-                    <input type="text" id='room-name' class="form-control rounded-0" placeholder="Room Name">
-                </div>
-
-                <div class="col-12 col-md-4 offset-md-4 mb-3">
-                    <label for="your-name">Your Name</label>
-                    <input type="text" id='your-name' class="form-control rounded-0" placeholder="Your Name">
-                </div>
-
-                <div class="col-12 col-md-4 offset-md-4 mb-3">
-                    <button id='create-room' class="btn btn-block rounded-0 btn-info">Create Room</button>
-                </div>
-
-                <div class="col-12 col-md-4 offset-md-4 mb-3" id='room-created'></div>
-            </div>
-        </div>
-
-        <div class="container-fluid" id='username-set' hidden>
-            <div class="row">
-                <div class="col-12 h4 mt-5 text-center">Your Name</div>
-            </div>
+            <div id="chat-messages" class="flex-grow p-4 overflow-y-auto flex flex-col space-y-3"></div>
             
-            <div class="row mt-2">
-                <div class="col-12 text-center">
-                    <span class="form-text small text-danger" id='err-msg-username'></span>
-                </div>
-
-                <div class="col-12 col-md-4 offset-md-4 mb-3">
-                    <label for="username">Your Name</label>
-                    <input type="text" id='username' class="form-control rounded-0" placeholder="Your Name">
-                </div>
-
-                <div class="col-12 col-md-4 offset-md-4 mb-3">
-                    <button id='enter-room' class="btn btn-block rounded-0 btn-info">Enter Room</button>
+            <div class="border-t border-gray-200 p-4">
+                <div class="flex">
+                    <textarea id="chat-input" class="flex-grow px-3 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" rows="2" placeholder="Type a message..."></textarea>
+                    <button id="chat-input-btn" type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 rounded-r-lg transition">
+leave                    </button>
                 </div>
             </div>
         </div>
-        
-        <div class="container-fluid room-comm" hidden>
-            <div class="row">
-                <video class="local-video mirror-mode" id='local' volume='0' autoplay muted></video>
-            </div>
-            
-            <div class="row">
-                <div class="col-md-12 main" id='main-section'>                    
-                    <div class="row mt-2 mb-2" id='videos'></div>
-                </div>
-
-                <div style="background-color: #0a022f;" class="col-md-3 chat-col d-print-none mb-2" id='chat-pane' hidden>
-                    <div class="row">
-                        <div class="col-12 text-center h2 mb-3">CHAT</div>
-                    </div>
-
-                    <div id='chat-messages'></div>
-
-                    <form>
-                        <div class="input-group mb-3" >
-                            <textarea  id="chat-input" class="form-control rounded-0 chat-box border-info" rows='3' placeholder="Type here..."></textarea>
-                            <div class="input-group-append" id='chat-input-btn'>
-                                <button type="button" class="btn btn-dark rounded-0 border-info btn-no-effect">Send</button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </body>
+    </div>
+    
+    <script>
+        // This script would include initialization code and any additional client-side functionality
+        // Existing scripts would be loaded from their respective files
+    </script>
+</body>
 </html>
