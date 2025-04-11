@@ -86,17 +86,26 @@ WSGI_APPLICATION = 'MyRemoteDesk.wsgi.application'
 # https://docs.djangoproject.com/en/3.0/ref/settings/#databases
 
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'NAME': 'myremotedesk',
+#         'USER': 'root',
+#         'PASSWORD': '',  # Blank password for XAMPP (unless you set one)
+#         'HOST': '127.0.0.1',  # Or 'localhost'
+#         'PORT': '3306',
+#     }
+# }
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'myremotedesk',
-        'USER': 'root',
-        'PASSWORD': '',  # Blank password for XAMPP (unless you set one)
-        'HOST': '127.0.0.1',  # Or 'localhost'
+        'NAME': 'mydesk_db',             # your database name
+        'USER': 'deskuser',              # your database username
+        'PASSWORD': 'deskpass123',       # your database password
+        'HOST': '127.0.0.1',
         'PORT': '3306',
     }
 }
-
 
 GRAPH_MODELS = {
     'all_applications': True,
